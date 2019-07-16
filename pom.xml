@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.aws.amqp.jms2</groupId>
+  <artifactId>amqp-jms2-perf</artifactId>
+  <name>AMQP JMS2 Performance Testing</name>
+  <packaging>jar</packaging>
+  <version>0.1</version>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <argLine>-Xms4g -Xmx4g</argLine>
+
+    <netty-transport-native-epoll-classifier>linux-x86_64</netty-transport-native-epoll-classifier>
+    <netty-transport-native-kqueue-classifier>osx-x86_64</netty-transport-native-kqueue-classifier>
+    
+      <!-- Dependency Versions for this Project -->
+    <proton-version>0.33.1</proton-version>
+    <netty-version>4.1.36.Final</netty-version>
+    <slf4j-version>1.7.25</slf4j-version>
+    <geronimo.jms.2.spec.version>1.0-alpha-2</geronimo.jms.2.spec.version>
+    <qpid-jms-version>0.44.0</qpid-jms-version>
+    <apache-commons-lang-version>3.9</apache-commons-lang-version>
+    <metrics.version>4.0.0</metrics.version>
+  </properties>
+  
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.qpid</groupId>
+      <artifactId>proton-j</artifactId>
+      <version>${proton-version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.apache.geronimo.specs</groupId>
+      <artifactId>geronimo-jms_2.0_spec</artifactId>
+      <version>${geronimo.jms.2.spec.version}</version>
+    </dependency>    
+    
+    <dependency>
+        <groupId>org.apache.qpid</groupId>
+        <artifactId>qpid-jms-client</artifactId>
+        <version>${qpid-jms-version}</version>
+    </dependency>
+    
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>${apache-commons-lang-version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+      <version>${slf4j-version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-buffer</artifactId>
+      <version>${netty-version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-common</artifactId>
+      <version>${netty-version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-handler</artifactId>
+      <version>${netty-version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+      <version>${netty-version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport-native-epoll</artifactId>
+      <version>${netty-version}</version>
+      <classifier>${netty-transport-native-epoll-classifier}</classifier>
+    </dependency>
+    
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport-native-kqueue</artifactId>
+      <version>${netty-version}</version>
+      <classifier>${netty-transport-native-kqueue-classifier}</classifier>
+    </dependency>
+    
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http</artifactId>
+      <version>${netty-version}</version>
+    </dependency>
+
+    <dependency>
+        <groupId>io.dropwizard.metrics</groupId>
+        <artifactId>metrics-core</artifactId>
+        <version>${metrics.version}</version>
+    </dependency>
+   
+  </dependencies>
+  
+	<build>
+		<plugins>
+			<!-- Maven Assembly Plugin -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.4.1</version>
+				<configuration>
+					<!-- get all project dependencies -->
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+				</configuration>
+				<executions>
+				  <execution>
+					<id>make-assembly</id>
+					<phase>package</phase> 
+					<goals>
+						<goal>single</goal>
+					</goals>
+				  </execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
