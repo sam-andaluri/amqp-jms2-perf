@@ -16,6 +16,21 @@ import javax.jms.CompletionListener;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.ConcurrentHashMap;
+
+import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.UUID;
+import java.util.Iterator;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.ObjectOutputStream;
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
 
 import org.apache.commons.lang3.RandomStringUtils;
 
@@ -29,6 +44,9 @@ public class Producer {
     static ConnectionFactory cf = null;
     static final MetricRegistry metrics = new MetricRegistry();
     static ConsoleReporter reporter = null;
+    static ConcurrentHashMap<String, String> msgIds = new ConcurrentHashMap<String, String>();
+    static Set<String> msgIdSet = msgIds.newKeySet();
+    
     public static void startReport() {
       reporter = ConsoleReporter.forRegistry(metrics)
           .convertRatesTo(TimeUnit.SECONDS)
@@ -41,11 +59,49 @@ public class Producer {
         reporter.stop();
     }
     
+    public static boolean recoverMsgIdSet() {
+        boolean retVal = false;
+        try {
+            File file = new File("/tmp/msgidset.ser");
+            if (file.exists()) {
+                 FileInputStream fileIn = new FileInputStream("/tmp/msgidset.ser");
+                ObjectInputStream in = new ObjectInputStream(fileIn);
+                msgIdSet = (Set<String>)in.readObject();
+                in.close();
+                fileIn.close();
+                retVal = true;
+            }
+        } catch (Exception ex) {
+            System.out.println("recoverMsgIdSet " + ex.getMessage());
+        }
+        return retVal;
+    }
+    
+    public static void generateMsgIdSet(int count) {
+        for (int i = 0; i < count; i++) {
+            msgIdSet.add(UUID.randomUUID().toString());
+        }
+    }
+    
+    public static void saveMsgIdSet() {
+        try {
+            FileOutputStream fileOut = new FileOutputStream("/tmp/msgidset.ser");
+            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+            out.writeObject(msgIdSet);
+            out.close();
+            fileOut.close();            
+        } catch (Exception ex) {
+            System.out.println("recoverMsgIdSet " + ex.getMessage());
+        }
+    }
+    
     public static void wait5Seconds() {
       try {
           Thread.sleep(5*1000);
       }
-      catch(InterruptedException e) {}
+      catch(Exception ex) {
+          System.out.println("wait5Seconds " + ex.getMessage());
+      }
     }
     
     public static boolean isNullOrEmpty(String str) {
@@ -68,6 +124,10 @@ public class Producer {
 	    if (!isNullOrEmpty(ndest))
 	        numDest = Integer.parseInt(ndest);
 	    return numDest;
+    }
+    
+    public static int getMsgsPerProducer() {
+        return (int) (getNumMessages()/getNumThreads());
     }
     
     public static int getAckMode() {
@@ -130,7 +190,7 @@ public class Producer {
         try {
             queue = (Destination)getInitialContext().lookup ("queueName");
         } catch (Exception ex) {
-            
+            System.out.println("getDestination " + ex.getMessage());
         }
         return queue; 
     }
@@ -140,7 +200,7 @@ public class Producer {
             try {
                 context = new InitialContext();
             } catch(Exception ex) {
-                
+                System.out.println("getInitialContext " + ex.getMessage());
             }
         }
         return context;
@@ -150,7 +210,7 @@ public class Producer {
             try {
         		cf = (ConnectionFactory)getInitialContext().lookup("brokerURI");
             } catch(Exception ex) {
-                
+                System.out.println("getConnectionFactory " + ex.getMessage());
             }            
         }
         return cf;
@@ -165,28 +225,69 @@ public class Producer {
                 else 
                     jmsContext = getConnectionFactory().createContext(getAckMode());                
             } catch(Exception ex) {
-                
+                System.out.println("getJMSContext " + ex.getMessage());
             }
         }
         return jmsContext;    
     }
-
-	public static void main(String[] args) throws Exception {
+    
+    //For testing recovery scenarios
+    public static void runSingleThreadedSyncTest() {
+        msgIdSet.clear();
+        if (!recoverMsgIdSet()) {
+            generateMsgIdSet(getNumMessages());
+        }
+        startReport();
+        Meter requests = metrics.meter("requests");
+        Iterator<String> itr = msgIdSet.iterator();
+        boolean noError = true;
+        while (itr.hasNext() && noError) {
+            String uuid = itr.next();
+            try {
+                getJMSContext().createProducer().send(getDestination(), uuid);
+                msgIdSet.remove(uuid);
+                requests.mark();
+            } catch (Exception ex) {
+                System.out.println("runSingleThreadedSyncTest " + ex.getMessage());
+                noError = false;
+            }
+        }
+        saveMsgIdSet();
+        stopReport();
+        wait5Seconds(); 
+    }
+    
+    //For performance testing
+    public static void runThreadedAsyncTest() {
         ExecutorService executor = Executors.newFixedThreadPool(getNumThreads());
         startReport();
         Meter requests = metrics.meter("requests");
-        for (int i = 0; i < getNumMessages(); i++) {
-            executor.submit(new Runnable() {
-            @Override
-                public void run() {
-                    getJMSContext().createProducer().setAsync(null).send(getDestination(), getPayload());
-                    requests.mark();
+        Set<Callable<Integer>> callables = new HashSet<Callable<Integer>>();
+        for (int i = 0; i < getNumThreads(); i++) {
+            callables.add(new Callable<Integer>() {
+                public Integer call() throws Exception {
+                    int j = 0;
+                    for (j = 0; j < getMsgsPerProducer(); j++) {
+                        getJMSContext().createProducer().setAsync(null).send(getDestination(), getPayload());
+                        requests.mark();                        
+                    }
+                    return j;
                 }
             });
         }
+        try {
+        List<Future<Integer>> futures = executor.invokeAll(callables);
+        } catch(Exception ex) {
+            System.out.println("runThreadedAsyncTest " + ex.getMessage());
+        }
         stopReport();
-        wait5Seconds();
-        //executor.shutdown();
-        //exit(0);
+        wait5Seconds(); 
+        executor.shutdown();
+    }
+
+	public static void main(String[] args) throws Exception {
+        //runThreadedAsyncTest();
+        runSingleThreadedSyncTest();
+        System.exit(0);
 	}
 }

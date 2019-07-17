@@ -39,7 +39,9 @@ public class Consumer {
       try {
           Thread.sleep(5*1000);
       }
-      catch(InterruptedException e) {}
+      catch(Exception ex) {
+          System.out.println("wait5Seconds " + ex.getMessage());
+      }
     }
     
     public static boolean isNullOrEmpty(String str) {
@@ -77,7 +79,7 @@ public class Consumer {
         try {
             queue = (Destination)getInitialContext().lookup ("queueName");
         } catch (Exception ex) {
-            
+            System.out.println("getDestination " + ex.getMessage());
         }
         return queue; 
     }
@@ -87,7 +89,7 @@ public class Consumer {
             try {
                 context = new InitialContext();
             } catch(Exception ex) {
-                
+                System.out.println("getInitialContext " + ex.getMessage());
             }
         }
         return context;
@@ -97,7 +99,7 @@ public class Consumer {
             try {
         		cf = (ConnectionFactory)getInitialContext().lookup("brokerURI");
             } catch(Exception ex) {
-                
+                System.out.println("getConnectionFactory " + ex.getMessage());
             }            
         }
         return cf;
@@ -112,7 +114,7 @@ public class Consumer {
                 else 
                     jmsContext = getConnectionFactory().createContext();                
             } catch(Exception ex) {
-                
+                System.out.println("getJMSContext " + ex.getMessage());
             }
         }
         return jmsContext;    
@@ -134,7 +136,7 @@ public class Consumer {
                                     requests.mark();
                                     //System.out.println(txt.getText() + ':' + txt.getJMSMessageID());
                                 } catch (Exception ex) {
-                                    ex.printStackTrace();
+                                    System.out.println("main " + ex.getMessage());
                                 }
                             }
                         }
