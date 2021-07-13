@@ -26,7 +26,7 @@
     <geronimo.jms.2.spec.version>1.0-alpha-2</geronimo.jms.2.spec.version>
     <qpid-jms-version>0.44.0</qpid-jms-version>
     <apache-commons-lang-version>3.9</apache-commons-lang-version>
-    <metrics.version>4.0.0</metrics.version>
+    <metrics.version>4.2.1</metrics.version>
   </properties>
   
   <dependencies>
